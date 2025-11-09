@@ -45,4 +45,14 @@ export const posts: Post[] = [
     category: "Policy",
     contentPath: "content/regulation-crypto-eu.mdx",
   },
+  {
+    slug: "tduitu-hjgjbgk-hfhfv",
+    title: "tufuoohj",
+    excerpt: "gndsggil",
+    author: "hyjfyg,/., p",
+    date: "Nov 9, 2025",
+    category: "Markets",
+    image: "/uploads/tduitu-hjgjbgk-hfhfv.jpg",
+    contentPath: "content/tduitu-hjgjbgk-hfhfv.mdx",
+  },
 ];
