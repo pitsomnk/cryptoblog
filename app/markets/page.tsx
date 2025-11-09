@@ -1,6 +1,6 @@
 import ArticleCard from "../../components/ArticleCard";
 import ListingLayout from "../../components/ListingLayout";
-import { posts } from "../../data/posts";
+  import { getPosts } from "../../lib/posts";
 
 export const metadata = {
   title: "Markets — CryptoBlog",
@@ -11,8 +11,9 @@ export const metadata = {
   },
 };
 
-export default function MarketsPage() {
-  const items = posts.filter((p) => p.category.toLowerCase() === "markets");
+  export default async function MarketsPage() {
+    const posts = await getPosts();
+    const items = posts.filter((p) => p.category.toLowerCase() === "markets");
 
   return (
     <ListingLayout title="Markets">

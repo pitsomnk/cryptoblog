@@ -1,11 +1,10 @@
-"use client";
-
 import ArticleCard from "../components/ArticleCard";
 import Sidebar from "../components/Sidebar";
-import { posts } from "../data/posts";
 import Link from "next/link";
+import { getPosts } from "../lib/posts";
+import type { Post } from "../types/post";
 
-function Featured({ post }: { post: (typeof posts)[0] }) {
+function Featured({ post }: { post: Post }) {
   return (
     <article className="group mb-8 rounded-md border border-zinc-100 p-6 shadow-sm transition-shadow duration-300 hover:shadow-lg dark:border-zinc-800">
       <div className="flex flex-col gap-4 lg:flex-row">
@@ -27,7 +26,8 @@ function Featured({ post }: { post: (typeof posts)[0] }) {
   );
 }
 
-export default function Home() {
+export default async function Home() {
+  const posts = await getPosts();
   const sorted = [...posts].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   const featured = sorted[0];
   const others = sorted.slice(1);

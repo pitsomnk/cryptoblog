@@ -1,6 +1,6 @@
 import ArticleCard from "../../components/ArticleCard";
 import ListingLayout from "../../components/ListingLayout";
-import { posts } from "../../data/posts";
+import { getPosts } from "../../lib/posts";
 
 export const metadata = {
   title: "Guides — CryptoBlog",
@@ -11,7 +11,8 @@ export const metadata = {
   },
 };
 
-export default function GuidesPage() {
+export default async function GuidesPage() {
+  const posts = await getPosts();
   const items = posts.filter((p) => p.category.toLowerCase() === "guides");
 
   return (

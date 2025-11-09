@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
-import { posts } from "../../../data/posts";
 import fs from "fs/promises";
 import path from "path";
 import { MDXRemote } from "next-mdx-remote/rsc";
 import remarkGfm from "remark-gfm";
+import { getPostBySlug } from "../../../lib/posts";
 
 type Props = {
   params: { slug: string } | Promise<{ slug: string }>;
@@ -11,8 +11,10 @@ type Props = {
 
 export default async function PostPage({ params }: Props) {
   const { slug } = (await params) as { slug: string };
-  const post = posts.find((p) => p.slug === slug);
+  const post = await getPostBySlug(slug);
   if (!post) return notFound();
+
+  if (!post.contentPath) return notFound();
 
   const filePath = path.join(process.cwd(), post.contentPath);
   let source = "";
@@ -37,6 +39,3 @@ export default async function PostPage({ params }: Props) {
   );
 }
 
-export async function generateStaticParams() {
-  return posts.map((p) => ({ slug: p.slug }));
-}

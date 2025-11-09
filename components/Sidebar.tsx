@@ -1,4 +1,4 @@
-import type { Post } from "../data/posts";
+import type { Post } from "../types/post";
 
 export default function Sidebar({ posts }: { posts: Post[] }) {
   return (

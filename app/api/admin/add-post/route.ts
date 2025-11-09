@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
+import { createClient as createSupabaseClient } from "../../../../utils/supabase/server";
 
 type NewPostReq = {
   title: string;
@@ -77,9 +78,22 @@ export async function POST(req: Request) {
     const slug = safeSlug(fields.slug);
     if (!slug) return NextResponse.json({ message: 'Invalid slug' }, { status: 400 });
 
-    // check for duplicates
+    // check for duplicates (local file + supabase if configured)
     if (await postsContainSlug(slug)) {
       return NextResponse.json({ message: 'Slug already exists' }, { status: 409 });
+    }
+    // also check supabase
+    try {
+      const supabase = createSupabaseClient();
+      if (supabase && process.env.NEXT_PUBLIC_SUPABASE_URL) {
+        const { data: existing } = await supabase.from('posts').select('slug').eq('slug', slug).limit(1);
+        if (existing && Array.isArray(existing) && existing.length) {
+          return NextResponse.json({ message: 'Slug already exists' }, { status: 409 });
+        }
+      }
+    } catch (e) {
+      // ignore supabase check failures and continue
+      console.error('supabase duplicate check failed', e);
     }
 
   // write MDX file (include image and featured if provided)
@@ -108,6 +122,28 @@ export async function POST(req: Request) {
 
     const newTxt = postsTxt.slice(0, insertIndex) + obj + postsTxt.slice(insertIndex);
     await fs.writeFile(POSTS_FILE, newTxt, 'utf8');
+
+    // try inserting metadata into Supabase (non-blocking)
+    try {
+      const supabase = createSupabaseClient();
+      if (supabase && process.env.NEXT_PUBLIC_SUPABASE_URL) {
+        const insert = {
+          slug,
+          title: fields.title,
+          excerpt: fields.excerpt,
+          author: fields.author,
+          date,
+          category: fields.category,
+          contentPath: `content/${slug}.mdx`,
+          image: imagePath ?? null,
+          featured: fields.featured ?? false,
+        };
+        const { error } = await supabase.from('posts').insert(insert);
+        if (error) console.error('supabase insert error', error);
+      }
+    } catch (e) {
+      console.error('supabase insert failed', e);
+    }
 
     return NextResponse.json({ ok: true, slug }, { status: 201 });
     } catch (err) {

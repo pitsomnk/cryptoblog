@@ -1,6 +1,6 @@
 import NewsletterSignup from "../../components/NewsletterSignup";
-import { posts } from "../../data/posts";
 import ArticleCard from "../../components/ArticleCard";
+import { getPosts } from "../../lib/posts";
 
 export const metadata = {
   title: "Newsletter — CryptoBlog",
@@ -11,7 +11,8 @@ export const metadata = {
   },
 };
 
-export default function NewsletterPage() {
+export default async function NewsletterPage() {
+  const posts = await getPosts();
   const latest = posts.slice(0, 2);
 
   return (
