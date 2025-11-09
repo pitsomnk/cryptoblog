@@ -1,12 +1,4 @@
-export type Post = {
-  slug: string;
-  title: string;
-  excerpt: string;
-  author: string;
-  date: string;
-  category: string;
-  contentPath: string; // path to MDX file
-};
+import type { Post } from "../types/post";
 
 export const posts: Post[] = [
   {
