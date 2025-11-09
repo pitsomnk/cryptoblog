@@ -96,16 +96,21 @@ export async function POST(req: Request) {
       console.error('supabase duplicate check failed', e);
     }
 
-  // write MDX file (include image and featured if provided)
-  await fs.mkdir(CONTENT_DIR, { recursive: true });
-  const mdxPath = path.join(CONTENT_DIR, `${slug}.mdx`);
+    // write MDX file (include image and featured if provided)
   const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric'});
-  let frontmatter = `---\ntitle: "${fields.title.replace(/\"/g, '\\"')}"\nauthor: "${fields.author.replace(/\"/g, '\\"')}"\ndate: "${dateStr}"\ncategory: "${fields.category.replace(/\"/g, '\\"')}"`;
-  if (imagePath) frontmatter += `\nimage: "${imagePath}"`;
-  if (fields.featured) frontmatter += `\nfeatured: true`;
-  frontmatter += `\n---\n\n`;
-  const mdx = `${frontmatter}${fields.content}\n`;
-  await fs.writeFile(mdxPath, mdx, 'utf8');
+    try {
+      await fs.mkdir(CONTENT_DIR, { recursive: true });
+      const mdxPath = path.join(CONTENT_DIR, `${slug}.mdx`);
+      let frontmatter = `---\ntitle: "${(fields.title as string).replace(/\"/g, '\\"')}"\nauthor: "${(fields.author as string).replace(/\"/g, '\\"')}"\ndate: "${dateStr}"\ncategory: "${(fields.category as string).replace(/\"/g, '\\"')}"`;
+      if (imagePath) frontmatter += `\nimage: "${imagePath}"`;
+      if (fields.featured) frontmatter += `\nfeatured: true`;
+      frontmatter += `\n---\n\n`;
+      const mdx = `${frontmatter}${(fields.content as string)}\n`;
+      await fs.writeFile(mdxPath, mdx, 'utf8');
+    } catch (writeErr) {
+      console.error('failed to write MDX', writeErr);
+      return NextResponse.json({ message: 'Failed to write post content', error: String(writeErr) }, { status: 500 });
+    }
 
     // append to data/posts.ts by inserting before the closing ];
     const postsTxt = await fs.readFile(POSTS_FILE, 'utf8');
@@ -120,8 +125,13 @@ export async function POST(req: Request) {
   const featuredField = fields.featured ? `    featured: true,\n` : '';
   const obj = `  {\n    slug: \"${slug}\",\n    title: \"${fields.title.replace(/\"/g, '\\"')}\",\n    excerpt: \"${fields.excerpt.replace(/\"/g, '\\"')}\",\n    author: \"${fields.author.replace(/\"/g, '\\"')}\",\n    date: \"${date}\",\n    category: \"${fields.category.replace(/\"/g, '\\"')}\",\n${imageField}${featuredField}    contentPath: \"content/${slug}.mdx\",\n  },\n`;
 
-    const newTxt = postsTxt.slice(0, insertIndex) + obj + postsTxt.slice(insertIndex);
-    await fs.writeFile(POSTS_FILE, newTxt, 'utf8');
+    try {
+      const newTxt = postsTxt.slice(0, insertIndex) + obj + postsTxt.slice(insertIndex);
+      await fs.writeFile(POSTS_FILE, newTxt, 'utf8');
+    } catch (writeErr) {
+      console.error('failed to update posts.ts', writeErr);
+      return NextResponse.json({ message: 'Failed to persist post metadata locally', error: String(writeErr) }, { status: 500 });
+    }
 
     // try inserting metadata into Supabase (non-blocking)
     try {
@@ -146,9 +156,11 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ok: true, slug }, { status: 201 });
-    } catch (err) {
-      // surface the error in dev logs to help debugging
-      console.error('admin add-post error:', err);
-      return NextResponse.json({ message: 'Server error' }, { status: 500 });
-    }
+  } catch (err) {
+    // surface the error in dev logs to help debugging and return details in non-prod
+    console.error('admin add-post error:', err);
+    const payload: { message: string; error?: string } = { message: 'Server error' };
+    if (process.env.NODE_ENV !== 'production') payload.error = String(err);
+    return NextResponse.json(payload, { status: 500 });
+  }
 }
