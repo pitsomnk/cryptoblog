@@ -1,65 +1,67 @@
-import { createClient as createServerSupabase } from "../utils/supabase/server";
 import { Post } from "../types/post";
+import { getDatabase } from "./mongodb";
 
-const useSupabase = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+const useMongoDB = Boolean(process.env.MONGODB_URI);
 
 export async function getPosts(): Promise<Post[]> {
-  if (!useSupabase) {
-    // dynamic import to avoid ESM/TS issues
+  if (!useMongoDB) {
     const mod = await import('../data/posts');
     return mod.posts as Post[];
   }
 
   try {
-    const supabase = createServerSupabase();
-    const { data, error } = await supabase.from('posts').select('*').order('date', { ascending: false });
-    if (error) {
-      // If the posts table doesn't exist, silently fall back to local data.
-      // This happens during early dev or when Supabase is configured but
-      // the schema hasn't been created yet.
-  // PostgREST returns an error object with a `code` property when the
-  // table is missing; guard with unknown-to-typed checks to avoid `any`.
-  const errObj = error as unknown as { code?: string };
-  if (errObj && errObj.code === 'PGRST205') {
-        const mod = await import('../data/posts');
-        return mod.posts as Post[];
-      }
-      // For other errors, log once and fall back to local data.
-      console.warn('supabase getPosts error - falling back to local posts', error?.message ?? error);
-      const mod = await import('../data/posts');
-      return mod.posts as Post[];
-    }
-    return (data ?? []) as Post[];
-  } catch (err) {
-    console.warn('getPosts caught error, falling back to local posts', err);
+    const db = await getDatabase();
+    const posts = await db
+      .collection('posts')
+      .find({})
+      .sort({ date: -1 })
+      .toArray();
+    
+    return posts.map(post => ({
+      slug: post.slug,
+      title: post.title,
+      excerpt: post.excerpt,
+      author: post.author,
+      date: post.date,
+      category: post.category,
+      contentPath: post.contentPath,
+      image: post.image,
+      featured: post.featured,
+    })) as Post[];
+  } catch (error) {
+    console.error('MongoDB getPosts error, falling back to local:', error);
     const mod = await import('../data/posts');
     return mod.posts as Post[];
   }
 }
 
 export async function getPostBySlug(slug: string): Promise<Post | null> {
-  if (!useSupabase) {
+  if (!useMongoDB) {
     const mod = await import('../data/posts');
-    const p = (mod.posts as Post[]).find((x) => x.slug === slug) ?? null;
-    return p;
+    return (mod.posts as Post[]).find((x) => x.slug === slug) ?? null;
   }
 
   try {
-    const supabase = createServerSupabase();
-    const { data, error } = await supabase.from('posts').select('*').eq('slug', slug).limit(1).single();
-    if (error) {
-  const errObj2 = error as unknown as { code?: string };
-  if (errObj2 && errObj2.code === 'PGRST205') {
-        const mod = await import('../data/posts');
-        return (mod.posts as Post[]).find((x) => x.slug === slug) ?? null;
-      }
-      console.warn('supabase getPostBySlug error - falling back to local', error?.message ?? error);
-      const mod = await import('../data/posts');
-      return (mod.posts as Post[]).find((x) => x.slug === slug) ?? null;
+    const db = await getDatabase();
+    const post = await db.collection('posts').findOne({ slug });
+    
+    if (!post) {
+      return null;
     }
-    return data as Post;
-  } catch (err) {
-    console.warn('getPostBySlug caught error, falling back to local posts', err);
+
+    return {
+      slug: post.slug,
+      title: post.title,
+      excerpt: post.excerpt,
+      author: post.author,
+      date: post.date,
+      category: post.category,
+      contentPath: post.contentPath,
+      image: post.image,
+      featured: post.featured,
+    } as Post;
+  } catch (error) {
+    console.error('MongoDB getPostBySlug error, falling back to local:', error);
     const mod = await import('../data/posts');
     return (mod.posts as Post[]).find((x) => x.slug === slug) ?? null;
   }

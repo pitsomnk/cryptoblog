@@ -47,4 +47,14 @@ export const posts: Post[] = [
     image: "/uploads/tduitu-hjgjbgk-hfhfv.jpg",
     contentPath: "content/tduitu-hjgjbgk-hfhfv.mdx",
   },
+  {
+    slug: "cv",
+    title: "hsh",
+    excerpt: "dvd",
+    author: "sdvsd",
+    date: "Nov 16, 2025",
+    category: "Markets",
+    image: "/uploads/cv.png",
+    contentPath: "content/cv.mdx",
+  },
 ];

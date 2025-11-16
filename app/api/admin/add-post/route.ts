@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
-import { createClient as createSupabaseClient } from "../../../../utils/supabase/server";
+import { getDatabase } from "../../../../lib/mongodb";
 
 type NewPostReq = {
   title: string;
@@ -9,7 +9,7 @@ type NewPostReq = {
   excerpt: string;
   author: string;
   category: string;
-  content: string; // MDX body (without frontmatter)
+  content: string;
 };
 
 type Fields = NewPostReq & { featured?: boolean };
@@ -24,7 +24,7 @@ function safeSlug(s: string) {
 async function postsContainSlug(slug: string) {
   try {
     const txt = await fs.readFile(POSTS_FILE, 'utf8');
-    return txt.includes(`slug: \"${slug}\"`) || txt.includes(`slug: '${slug}'`);
+    return txt.includes(`slug: "${slug}"`) || txt.includes(`slug: '${slug}'`);
   } catch {
     return false;
   }
@@ -32,10 +32,9 @@ async function postsContainSlug(slug: string) {
 
 export async function POST(req: Request) {
   try {
-    // Support both JSON and multipart/form-data (for image uploads)
     const contentType = (req.headers.get('content-type') || '');
-  let fields: Partial<Fields> = {};
-  let imagePath: string | undefined = undefined;
+    let fields: Partial<Fields> = {};
+    let imagePath: string | undefined = undefined;
 
     if (contentType.startsWith('multipart/form-data')) {
       const form = await req.formData();
@@ -48,13 +47,11 @@ export async function POST(req: Request) {
       fields.featured = String(form.get('featured') ?? 'false') === 'true';
 
       const maybeFile = form.get('image');
-      // FormData file in Next request is a Blob/File-like object with arrayBuffer()
       if (maybeFile && typeof (maybeFile as Blob).arrayBuffer === 'function') {
         const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads');
         await fs.mkdir(UPLOAD_DIR, { recursive: true });
         const arrayBuffer = await (maybeFile as Blob).arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
-        // try to read a filename if available (File exposes `name`)
         let originalName = '';
         if (typeof maybeFile === 'object' && maybeFile !== null) {
           const mf = maybeFile as { name?: unknown };
@@ -78,26 +75,24 @@ export async function POST(req: Request) {
     const slug = safeSlug(fields.slug);
     if (!slug) return NextResponse.json({ message: 'Invalid slug' }, { status: 400 });
 
-    // check for duplicates (local file + supabase if configured)
+    // Check MongoDB for existing slug if configured
+    if (process.env.MONGODB_URI) {
+      try {
+        const db = await getDatabase();
+        const existing = await db.collection('posts').findOne({ slug });
+        if (existing) {
+          return NextResponse.json({ message: 'Slug already exists in database' }, { status: 409 });
+        }
+      } catch (mongoErr) {
+        console.error('MongoDB duplicate check error (continuing):', mongoErr);
+      }
+    }
+
     if (await postsContainSlug(slug)) {
       return NextResponse.json({ message: 'Slug already exists' }, { status: 409 });
     }
-    // also check supabase
-    try {
-      const supabase = createSupabaseClient();
-      if (supabase && process.env.NEXT_PUBLIC_SUPABASE_URL) {
-        const { data: existing } = await supabase.from('posts').select('slug').eq('slug', slug).limit(1);
-        if (existing && Array.isArray(existing) && existing.length) {
-          return NextResponse.json({ message: 'Slug already exists' }, { status: 409 });
-        }
-      }
-    } catch (e) {
-      // ignore supabase check failures and continue
-      console.error('supabase duplicate check failed', e);
-    }
 
-    // write MDX file (include image and featured if provided)
-  const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric'});
+    const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric'});
     try {
       await fs.mkdir(CONTENT_DIR, { recursive: true });
       const mdxPath = path.join(CONTENT_DIR, `${slug}.mdx`);
@@ -112,18 +107,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: 'Failed to write post content', error: String(writeErr) }, { status: 500 });
     }
 
-    // append to data/posts.ts by inserting before the closing ];
     const postsTxt = await fs.readFile(POSTS_FILE, 'utf8');
     const insertIndex = postsTxt.lastIndexOf('];');
     if (insertIndex === -1) {
       return NextResponse.json({ message: 'posts file malformed' }, { status: 500 });
     }
 
-  // create object string
-  const date = dateStr;
-  const imageField = imagePath ? `    image: \"${imagePath}\",\n` : '';
-  const featuredField = fields.featured ? `    featured: true,\n` : '';
-  const obj = `  {\n    slug: \"${slug}\",\n    title: \"${fields.title.replace(/\"/g, '\\"')}\",\n    excerpt: \"${fields.excerpt.replace(/\"/g, '\\"')}\",\n    author: \"${fields.author.replace(/\"/g, '\\"')}\",\n    date: \"${date}\",\n    category: \"${fields.category.replace(/\"/g, '\\"')}\",\n${imageField}${featuredField}    contentPath: \"content/${slug}.mdx\",\n  },\n`;
+    const date = dateStr;
+    const imageField = imagePath ? `    image: \"${imagePath}\",\n` : '';
+    const featuredField = fields.featured ? `    featured: true,\n` : '';
+    const obj = `  {\n    slug: \"${slug}\",\n    title: \"${fields.title.replace(/\"/g, '\\\"')}\",\n    excerpt: \"${fields.excerpt.replace(/\"/g, '\\\"')}\",\n    author: \"${fields.author.replace(/\"/g, '\\\"')}\",\n    date: \"${date}\",\n    category: \"${fields.category.replace(/\"/g, '\\\"')}\",\n${imageField}${featuredField}    contentPath: \"content/${slug}.mdx\",\n  },\n`;
 
     try {
       const newTxt = postsTxt.slice(0, insertIndex) + obj + postsTxt.slice(insertIndex);
@@ -133,11 +126,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: 'Failed to persist post metadata locally', error: String(writeErr) }, { status: 500 });
     }
 
-    // try inserting metadata into Supabase (non-blocking)
-    try {
-      const supabase = createSupabaseClient();
-      if (supabase && process.env.NEXT_PUBLIC_SUPABASE_URL) {
-        const insert = {
+    // Insert into MongoDB if configured
+    if (process.env.MONGODB_URI) {
+      try {
+        const db = await getDatabase();
+        const postDoc = {
           slug,
           title: fields.title,
           excerpt: fields.excerpt,
@@ -147,17 +140,17 @@ export async function POST(req: Request) {
           contentPath: `content/${slug}.mdx`,
           image: imagePath ?? null,
           featured: fields.featured ?? false,
+          createdAt: new Date(),
         };
-        const { error } = await supabase.from('posts').insert(insert);
-        if (error) console.error('supabase insert error', error);
+        await db.collection('posts').insertOne(postDoc);
+      } catch (mongoErr) {
+        console.error('MongoDB insert error (continuing):', mongoErr);
+        // Don't fail the request if MongoDB insert fails - local file is already saved
       }
-    } catch (e) {
-      console.error('supabase insert failed', e);
     }
 
     return NextResponse.json({ ok: true, slug }, { status: 201 });
   } catch (err) {
-    // surface the error in dev logs to help debugging and return details in non-prod
     console.error('admin add-post error:', err);
     const payload: { message: string; error?: string } = { message: 'Server error' };
     if (process.env.NODE_ENV !== 'production') payload.error = String(err);
