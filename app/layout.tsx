@@ -12,6 +12,9 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "CryptoBlog",
   description: "News-style blog about crypto and Web3",
+  icons: {
+    icon: "/uploads/cv.png",
+  },
 };
 
 export default function RootLayout({
