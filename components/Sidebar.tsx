@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Post } from "../types/post";
 
 export default function Sidebar({ posts }: { posts: Post[] }) {
@@ -8,9 +9,9 @@ export default function Sidebar({ posts }: { posts: Post[] }) {
         <ul className="flex flex-col gap-3">
           {posts.slice(0, 4).map((p) => (
             <li key={p.slug} className="text-sm">
-              <a href="#" className="text-zinc-800 hover:underline dark:text-zinc-200">
+              <Link href={`/posts/${p.slug}`} className="text-zinc-800 hover:underline dark:text-zinc-200">
                 {p.title}
-              </a>
+              </Link>
               <div className="text-xs text-zinc-500">{p.date} • {p.author}</div>
             </li>
           ))}
