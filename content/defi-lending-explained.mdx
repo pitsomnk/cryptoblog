@@ -1,0 +1,268 @@
+---
+title: "DeFi Lending Explained: Earn Yield on Your Crypto"
+author: "David Park"
+date: "Jan 15, 2026"
+category: "Guides"
+image: "/uploads/d.jpg"
+---
+
+Decentralized lending protocols have revolutionized how we think about borrowing and earning interest on crypto. This guide breaks down everything you need to know about DeFi lending in 2026.
+
+## How DeFi Lending Works
+
+Unlike traditional banks, DeFi lending operates through smart contracts:
+
+<div className="flow-diagram">
+  <div className="flow-step">
+    <span className="flow-icon">💰</span>
+    <span className="flow-label">Lender deposits assets</span>
+  </div>
+  <div className="flow-arrow">→</div>
+  <div className="flow-step">
+    <span className="flow-icon">📜</span>
+    <span className="flow-label">Smart contract pools funds</span>
+  </div>
+  <div className="flow-arrow">→</div>
+  <div className="flow-step">
+    <span className="flow-icon">🏦</span>
+    <span className="flow-label">Borrowers take loans</span>
+  </div>
+  <div className="flow-arrow">→</div>
+  <div className="flow-step">
+    <span className="flow-icon">📈</span>
+    <span className="flow-label">Interest accrues to lenders</span>
+  </div>
+</div>
+
+## Top Lending Protocols Compared
+
+<div className="table-responsive">
+  <table className="crypto-table">
+    <thead>
+      <tr>
+        <th>Protocol</th>
+        <th>Chain</th>
+        <th>TVL</th>
+        <th>USDC APY</th>
+        <th>ETH APY</th>
+        <th>Safety Score</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Aave V3</strong></td>
+        <td>Multi-chain</td>
+        <td className="price">$12.4B</td>
+        <td className="roi positive">4.2%</td>
+        <td className="roi positive">2.1%</td>
+        <td>⭐⭐⭐⭐⭐</td>
+      </tr>
+      <tr>
+        <td><strong>Compound V3</strong></td>
+        <td>Ethereum</td>
+        <td className="price">$3.8B</td>
+        <td className="roi positive">3.8%</td>
+        <td className="roi positive">1.9%</td>
+        <td>⭐⭐⭐⭐⭐</td>
+      </tr>
+      <tr>
+        <td><strong>Morpho Blue</strong></td>
+        <td>Ethereum</td>
+        <td className="price">$2.1B</td>
+        <td className="roi positive">5.1%</td>
+        <td className="roi positive">2.8%</td>
+        <td>⭐⭐⭐⭐</td>
+      </tr>
+      <tr>
+        <td><strong>Kamino</strong></td>
+        <td>Solana</td>
+        <td className="price">$1.2B</td>
+        <td className="roi positive">6.2%</td>
+        <td>-</td>
+        <td>⭐⭐⭐⭐</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+## Understanding Interest Rates
+
+DeFi lending uses **utilization-based** interest rate models:
+
+```
+Interest Rate = Base Rate + (Utilization × Slope)
+
+Example:
+- Base Rate: 2%
+- Utilization: 70%
+- Slope: 0.1
+
+Interest Rate = 2% + (70% × 0.1) = 9%
+```
+
+<div className="info-box">
+  <h4>💡 Key Concept: Kink Model</h4>
+  <p>Most protocols use a "kink" model where rates increase slowly until a target utilization (usually 80%), then spike dramatically. This ensures liquidity remains available for withdrawals.</p>
+</div>
+
+## Collateralization & Liquidation
+
+### How Collateral Works
+
+When borrowing, you must over-collateralize your position:
+
+<div className="example-box">
+  <h4>Example: Borrowing USDC against ETH</h4>
+  <table className="simple-table">
+    <tr>
+      <td>Collateral (ETH)</td>
+      <td>$10,000</td>
+    </tr>
+    <tr>
+      <td>Loan-to-Value (LTV)</td>
+      <td>80%</td>
+    </tr>
+    <tr>
+      <td>Max Borrow (USDC)</td>
+      <td>$8,000</td>
+    </tr>
+    <tr>
+      <td>Liquidation Threshold</td>
+      <td>85%</td>
+    </tr>
+    <tr>
+      <td>Liquidation Price (ETH)</td>
+      <td>~$2,350</td>
+    </tr>
+  </table>
+</div>
+
+### Avoiding Liquidation
+
+<div className="tips-grid">
+  <div className="tip-card">
+    <span className="tip-icon">📊</span>
+    <h4>Monitor Health Factor</h4>
+    <p>Keep health factor above 1.5 for safety margin</p>
+  </div>
+  <div className="tip-card">
+    <span className="tip-icon">🔔</span>
+    <h4>Set Up Alerts</h4>
+    <p>Use DeFi Saver or similar for notifications</p>
+  </div>
+  <div className="tip-card">
+    <span className="tip-icon">🛡️</span>
+    <h4>Use Stable Collateral</h4>
+    <p>Stablecoins as collateral reduce volatility risk</p>
+  </div>
+  <div className="tip-card">
+    <span className="tip-icon">🤖</span>
+    <h4>Automated Protection</h4>
+    <p>Set up automated repayments at key thresholds</p>
+  </div>
+</div>
+
+## Step-by-Step: Lending on Aave
+
+Here's how to start earning yield:
+
+### 1. Connect Your Wallet
+
+```javascript
+// Using ethers.js to connect
+const provider = new ethers.BrowserProvider(window.ethereum);
+const signer = await provider.getSigner();
+const aavePool = new ethers.Contract(POOL_ADDRESS, POOL_ABI, signer);
+```
+
+### 2. Approve Token Spending
+
+```javascript
+// Approve Aave to spend your USDC
+const usdc = new ethers.Contract(USDC_ADDRESS, ERC20_ABI, signer);
+await usdc.approve(POOL_ADDRESS, amount);
+```
+
+### 3. Supply Assets
+
+```javascript
+// Supply USDC to earn interest
+await aavePool.supply(
+  USDC_ADDRESS,  // Asset to supply
+  amount,        // Amount in wei
+  userAddress,   // On behalf of
+  0              // Referral code
+);
+```
+
+### 4. Monitor & Withdraw
+
+```javascript
+// Check your balance (aTokens)
+const aUSDC = new ethers.Contract(A_USDC_ADDRESS, ERC20_ABI, signer);
+const balance = await aUSDC.balanceOf(userAddress);
+
+// Withdraw when ready
+await aavePool.withdraw(USDC_ADDRESS, amount, userAddress);
+```
+
+## Risk Assessment Framework
+
+<div className="risk-matrix">
+  <table className="crypto-table">
+    <thead>
+      <tr>
+        <th>Risk Type</th>
+        <th>Description</th>
+        <th>Mitigation</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Smart Contract</strong></td>
+        <td>Bugs in protocol code</td>
+        <td>Use audited, battle-tested protocols</td>
+      </tr>
+      <tr>
+        <td><strong>Liquidation</strong></td>
+        <td>Collateral value drops</td>
+        <td>Maintain high health factor</td>
+      </tr>
+      <tr>
+        <td><strong>Oracle</strong></td>
+        <td>Price feed manipulation</td>
+        <td>Protocols with Chainlink oracles</td>
+      </tr>
+      <tr>
+        <td><strong>Governance</strong></td>
+        <td>Malicious proposals</td>
+        <td>Timelocks and active monitoring</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+## Yield Optimization Strategies
+
+### 1. Recursive Borrowing (Looping)
+
+Advanced users can amplify yields by borrowing against deposits and re-depositing:
+
+<div className="warning-box">
+  <h4>⚠️ High Risk Strategy</h4>
+  <p>Looping multiplies both gains AND losses. Only for experienced users who understand liquidation risks.</p>
+</div>
+
+### 2. Cross-Chain Arbitrage
+
+Different chains offer different rates. Bridge assets to capture higher yields:
+
+- Monitor rates across Ethereum, Arbitrum, Base, and Solana
+- Account for bridge fees and gas costs
+- Consider bridge security risks
+
+## Conclusion
+
+DeFi lending offers unprecedented access to yield-generating opportunities without intermediaries. Start with small amounts on established protocols, understand the risks, and gradually increase exposure as you gain experience.
+
+*Ready to start lending? Check out our video tutorial on setting up your first Aave position.*
